@@ -1,11 +1,14 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from 'express'
 import mongoose from 'mongoose'
 import cors from 'cors'
-import dotenv from 'dotenv'
 import grievanceRoutes from './routes/grievanceRoutes.js'
 import authRoutes from './routes/authRoutes.js'
 import User from './models/User.js'
 import bcrypt from 'bcrypt'
+
 
 dotenv.config()
 const app = express()
