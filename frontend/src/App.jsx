@@ -3,6 +3,7 @@ import axios from 'axios'
 import Dashboard from './Dashboard'
 import Login from './Login'
 import About from './About'
+const API = import.meta.env.VITE_API_URL;
 
 export default function App(){
   const [grievances, setGrievances] = useState([])
@@ -28,14 +29,14 @@ export default function App(){
   }
 
   function fetchList(){
-    axios.get('/api/grievances')
+    axios.get(`${API}/api/grievances`)
       .then(res => setGrievances(res.data))
       .catch(console.error)
   }
 
   function submit(e){
     e.preventDefault()
-    axios.post('/api/grievances', { title, description: desc })
+    axios.post(`${API}/api/grievances`, { title, description: desc })
       .then(()=> { setTitle(''); setDesc(''); fetchList() })
       .catch(console.error)
   }
@@ -61,7 +62,8 @@ export default function App(){
     setFieldErrors(errs)
     if(Object.keys(errs).length){ setLoginLoading(false); return }
     try{
-      const res = await axios.post('/api/auth/login', { email, password })
+      const res = await axios.post(`${API}/api/auth/login`, { email, password })
+
       const { token, user } = res.data
       setToken(token)
       setUser(user)
