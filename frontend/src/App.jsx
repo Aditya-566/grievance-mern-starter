@@ -172,15 +172,12 @@ export default function App(){
   }
 
   function quickSignIn(){
-    // navigate to login page instead of auto-signing in
-    navigate('/login')
-  }
-  // Authenticated routes: dashboard
-  if(route !== '/dashboard'){
-    navigate('/dashboard')
-  }
+  navigate('/login')
+}
 
-  return (
-    <Dashboard user={user} onLogout={logout} />
-  )
+// AUTHENTICATED USER → SHOW DASHBOARD ONLY AT /dashboard
+if (token) {
+  if (route !== '/dashboard') navigate('/dashboard')
+  return <Dashboard user={user} onLogout={logout} />
+}
 }
