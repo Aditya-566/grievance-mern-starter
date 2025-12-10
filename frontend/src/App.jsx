@@ -4,16 +4,23 @@ import Dashboard from './Dashboard'
 import Login from './Login'
 import About from './About'
 
+// --- GLOBAL API CONFIGURATION ---
+// Falls back to localhost if the env variable is missing
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+axios.defaults.baseURL = API_BASE;
+// --------------------------------
+
 export default function App(){
-  const [grievances, setGrievances] = useState([])
-  const [title, setTitle] = useState('')
-  const [desc, setDesc] = useState('')
   const [token, setToken] = useState(localStorage.getItem('token') || '')
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || 'null'))
-
-  useEffect(()=>{ if(token) axios.defaults.headers.common.Authorization = `Bearer ${token}` }, [token])
-  // simple client-side route using History API
   const [route, setRoute] = useState(window.location.pathname || '/')
+
+  // Maintain session headers
+  useEffect(()=>{ 
+    if(token) axios.defaults.headers.common.Authorization = `Bearer ${token}` 
+  }, [token])
+
+  // Browser back button support
   useEffect(()=>{
     const onPop = ()=> setRoute(window.location.pathname)
     window.addEventListener('popstate', onPop)
@@ -27,158 +34,76 @@ export default function App(){
     }
   }
 
-  function fetchList(){
-    axios.get('/api/grievances')
-      .then(res => setGrievances(res.data))
-      .catch(console.error)
-  }
-
-  function submit(e){
-    e.preventDefault()
-    axios.post('/api/grievances', { title, description: desc })
-      .then(()=> { setTitle(''); setDesc(''); fetchList() })
-      .catch(console.error)
-  }
-
-  // login state
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loginError, setLoginError] = useState('')
-  const [loginLoading, setLoginLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(!!localStorage.getItem('rememberEmail'))
-  const [fieldErrors, setFieldErrors] = useState({})
-
-  async function login(e){
-    e.preventDefault()
-    setLoginError('')
-    setLoginLoading(true)
-    // client-side validation
-    const errs = {}
-    if(!email) errs.email = 'Email is required'
-    else if(!/^\S+@\S+\.\S+$/.test(email)) errs.email = 'Enter a valid email'
-    if(!password) errs.password = 'Password is required'
-    setFieldErrors(errs)
-    if(Object.keys(errs).length){ setLoginLoading(false); return }
-    try{
-      const res = await axios.post('/api/auth/login', { email, password })
-      const { token, user } = res.data
-      setToken(token)
-      setUser(user)
-      localStorage.setItem('token', token)
-      localStorage.setItem('user', JSON.stringify(user))
-      axios.defaults.headers.common.Authorization = `Bearer ${token}`
-      // navigate to dashboard on success
-      navigate('/dashboard')
-    }catch(err){
-      const status = err?.response?.status
-      if(status === 401) setLoginError('Invalid email or password')
-      else setLoginError(err.response?.data?.error || 'Login failed')
-    } finally{
-      setLoginLoading(false)
-    }
-  }
-
   function logout(){
     setToken('')
     setUser(null)
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    localStorage.clear() // Clear all auth data
     delete axios.defaults.headers.common.Authorization
     navigate('/')
   }
 
-  // if user is not authenticated, show the login route or landing
-    if(!token){
-    if(route === '/about'){
-      return <About onBack={() => navigate('/')} />
-    }
-    if(route !== '/login'){
-      // richer landing / hero with topic details and CTA
+  // --- UNAUTHENTICATED VIEWS ---
+  if(!token){
+    if(route === '/about') return <About onBack={() => navigate('/')} />
+    
+    if(route === '/login'){
       return (
-        <div className="landing-page">
-          <div className="hero-background">
-            <div className="gradient-orb orb-1"></div>
-            <div className="gradient-orb orb-2"></div>
-            <div className="gradient-orb orb-3"></div>
-          </div>
-          <div className="container hero">
-            <div className="hero-inner">
-              <div className="hero-content">
-                <div className="hero-badge">✨ Modern Grievance Management</div>
-                <h1 className="hero-title">
-                  <span className="title-gradient">Grievance Tracker</span>
-                  <br />
-                  Clear, Fast, Transparent
-                </h1>
-                <p className="hero-subtitle">
-                  Submit issues, track progress, and resolve concerns with a simple workflow designed for teams and institutions.
-                </p>
-
-                <div className="topics">
-                  <div className="topic-card" data-tilt>
-                    <div className="topic-icon">📝</div>
-                    <strong>Easy Submission</strong>
-                    <div className="muted-small">Create grievances quickly with title and description.</div>
-                  </div>
-                  <div className="topic-card" data-tilt>
-                    <div className="topic-icon">📊</div>
-                    <strong>Status Tracking</strong>
-                    <div className="muted-small">Open, Resolved, or Rejected — stay informed with real-time updates.</div>
-                  </div>
-                  <div className="topic-card" data-tilt>
-                    <div className="topic-icon">⚙️</div>
-                    <strong>Admin Actions</strong>
-                    <div className="muted-small">Admins can resolve, reject, or re-open items with audit-friendly actions.</div>
-                  </div>
-                  <div className="topic-card" data-tilt>
-                    <div className="topic-icon">📈</div>
-                    <strong>Analytics</strong>
-                    <div className="muted-small">Dashboard stats and filters help you prioritize work.</div>
-                  </div>
-                </div>
-
-                <div className="cta-section">
-                  <button className="cta-btn" onClick={quickSignIn}>
-                    <span>Sign in — Get started</span>
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7.5 15L12.5 10L7.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </button>
-                  <button className="cta-btn-secondary" onClick={() => navigate('/about')}>
-                    <span>Learn More</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <Login 
+          initialEmail={localStorage.getItem('rememberEmail') || ''} 
+          onLoggedIn={(data)=>{
+            const { token, user } = data
+            setToken(token)
+            setUser(user)
+            localStorage.setItem('token', token)
+            localStorage.setItem('user', JSON.stringify(user))
+            axios.defaults.headers.common.Authorization = `Bearer ${token}`
+            navigate('/dashboard')
+          }} 
+        />
       )
     }
 
+    // Modern Landing Page
     return (
-      <Login initialEmail={localStorage.getItem('rememberEmail') || ''} onLoggedIn={(data)=>{
-        const { token, user } = data
-        setToken(token)
-        setUser(user)
-        localStorage.setItem('token', token)
-        localStorage.setItem('user', JSON.stringify(user))
-        axios.defaults.headers.common.Authorization = `Bearer ${token}`
-        navigate('/dashboard')
-      }} />
+      <div className="min-h-screen bg-slate-900 text-white font-sans selection:bg-indigo-500 selection:text-white">
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
+        
+        <nav className="relative z-10 container mx-auto px-6 py-6 flex justify-between items-center">
+            <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
+                GrievancePortal
+            </div>
+            <button onClick={() => navigate('/login')} className="px-5 py-2 rounded-full border border-slate-700 hover:bg-slate-800 transition-all text-sm font-medium">
+                Sign In
+            </button>
+        </nav>
+
+        <div className="relative z-10 container mx-auto px-6 pt-20 flex flex-col items-center text-center">
+          <div className="inline-block px-4 py-1 mb-6 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-sm font-semibold">
+            🚀 Fast & Transparent Redressal
+          </div>
+          
+          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-tight">
+            Resolve issues <br/>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">
+              without the friction.
+            </span>
+          </h1>
+          
+          <p className="text-lg text-slate-400 max-w-2xl mb-10">
+             Submit grievances, track real-time status updates, and communicate with administrators in a secure, unified platform.
+          </p>
+
+          <div className="flex gap-4">
+            <button onClick={() => navigate('/login')} className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/25 transition-all hover:-translate-y-1">
+                Submit a Grievance
+            </button>
+          </div>
+        </div>
+      </div>
     )
   }
 
-  function quickSignIn(){
-    // navigate to login page instead of auto-signing in
-    navigate('/login')
-  }
-  // Authenticated routes: dashboard
-  if(route !== '/dashboard'){
-    navigate('/dashboard')
-  }
-
-  return (
-    <Dashboard user={user} onLogout={logout} />
-  )
+  // --- AUTHENTICATED ---
+  if(route !== '/dashboard') navigate('/dashboard')
+  return <Dashboard user={user} onLogout={logout} />
 }

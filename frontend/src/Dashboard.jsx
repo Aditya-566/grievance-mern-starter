@@ -1,240 +1,126 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
-
-const API = import.meta.env.VITE_API_URL;
-
-function formatFileSize(bytes) {
-  if (!bytes) return "0 B";
-  if (bytes < 1024) return bytes + " B";
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-}
 
 export default function Dashboard({ user, onLogout }) {
   const [grievances, setGrievances] = useState([]);
+  const [stats, setStats] = useState({ total: 0, byStatus: {} });
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
-  const [selectedFiles, setSelectedFiles] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({ total: 0, byStatus: {} });
-  const [activeFilter, setActiveFilter] = useState("");
-  const [trackingId, setTrackingId] = useState("");
-  const [trackingResult, setTrackingResult] = useState(null);
-  const [trackingError, setTrackingError] = useState("");
-  const [trackingLoading, setTrackingLoading] = useState(false);
+  
+  useEffect(() => { refreshData(); }, []);
 
-  useEffect(() => {
-    fetchList();
-    fetchStats();
-  }, []);
-
-  function fetchList(status) {
-    const params = {};
-    if (status) params.status = status;
-
-    axios
-      .get(`${API}/api/grievances`, { params })
-      .then((res) => setGrievances(res.data.list || res.data))
-      .catch(console.error);
-  }
-
-  function fetchStats() {
-    axios
-      .get(`${API}/api/grievances/stats`)
-      .then((res) => setStats(res.data))
-      .catch(console.error);
-  }
-
-  function handleFileChange(e) {
-    const files = Array.from(e.target.files);
-    if (files.length > 5) return alert("Max 5 files allowed");
-    setSelectedFiles(files);
-  }
-
-  function removeFile(i) {
-    setSelectedFiles((prev) => prev.filter((_, idx) => idx !== i));
+  function refreshData(){
+      axios.get('/api/grievances').then((res) => setGrievances(res.data)).catch(console.error);
+      axios.get('/api/grievances/stats').then((res) => setStats(res.data)).catch(console.error);
   }
 
   function submit(e) {
     e.preventDefault();
-    if (!title || !desc) return;
-
     setLoading(true);
-    const fd = new FormData();
-    fd.append("title", title);
-    fd.append("description", desc);
-    selectedFiles.forEach((f) => fd.append("files", f));
-
-    axios
-      .post(`${API}/api/grievances`, fd, { headers: { "Content-Type": "multipart/form-data" } })
-      .then(() => {
-        setTitle("");
-        setDesc("");
-        setSelectedFiles([]);
-        fetchList();
-        fetchStats();
-      })
-      .catch((err) => alert(err?.response?.data?.error || "Failed to create grievance"))
+    axios.post('/api/grievances', { title, description: desc })
+      .then(() => { setTitle(""); setDesc(""); refreshData(); })
+      .catch((err) => alert("Error creating grievance"))
       .finally(() => setLoading(false));
   }
 
-  async function changeStatus(id, status) {
-    if (!window.confirm(`Change status to ${status}?`)) return;
-    try {
-      await axios.patch(`${API}/api/grievances/${id}/status`, { status });
-      fetchList(activeFilter || undefined);
-      fetchStats();
-    } catch (e) {
-      alert("Failed to update status");
-    }
-  }
-
-  function handleTrackSubmit(e) {
-    e.preventDefault();
-    if (!trackingId) return setTrackingError("Enter grievance ID");
-    fetchTracking(trackingId);
-  }
-
-  function handleQuickTrack(id) {
-    setTrackingId(id);
-    fetchTracking(id);
-  }
-
-  async function fetchTracking(id) {
-    setTrackingError("");
-    setTrackingLoading(true);
-
-    try {
-      const res = await axios.get(`${API}/api/grievances/${id}`);
-      setTrackingResult(res.data);
-    } catch (err) {
-      setTrackingResult(null);
-      setTrackingError(err?.response?.status === 404 ? "Not found" : "Error fetching status");
-    }
-
-    setTrackingLoading(false);
+  async function updateStatus(id, status) {
+    if(!confirm(`Mark as ${status}?`)) return;
+    try { await axios.patch(`/api/grievances/${id}/status`, { status }); refreshData(); } 
+    catch(e) { console.error(e); }
   }
 
   return (
-    <div className="dashboard-wrapper">
-      <div className="container dashboard">
-
-        {/* HEADER */}
-        <header className="dashboard-header">
-          <div className="header-content">
-            <div className="header-icon">📊</div>
-            <div>
-              <h1 className="dashboard-title">Grievance Dashboard</h1>
-              <p className="dashboard-welcome">
-                Welcome back, <strong>{user?.name || user?.email}</strong>
-              </p>
-            </div>
-          </div>
-          <button onClick={onLogout} className="logout-btn">Sign out</button>
-        </header>
-
-        {/* ===================================================================================== */}
-        {/*                             FULL ORIGINAL UI RESTORED BELOW                          */}
-        {/* ===================================================================================== */}
-
-        {/* STATS */}
-        <section className="stats-row">
-          {[
-            { label: "Total", value: stats.total, key: "" },
-            { label: "Open", value: stats.byStatus?.open || 0, key: "open" },
-            { label: "Resolved", value: stats.byStatus?.resolved || 0, key: "resolved" },
-            { label: "Rejected", value: stats.byStatus?.rejected || 0, key: "rejected" }
-          ].map((s) => (
-            <div key={s.label} className="stat-card" onClick={() => fetchList(s.key)}>
-              <div className="stat-value">{s.value}</div>
-              <div className="stat-label">{s.label}</div>
-            </div>
-          ))}
-        </section>
-
-        {/* CREATE GRIEVANCE */}
-        <section className="dashboard-panel create-panel">
-          <form onSubmit={submit}>
-            <input
-              className="dashboard-input"
-              placeholder="Grievance title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-            />
-
-            <textarea
-              className="dashboard-textarea"
-              placeholder="Describe your grievance..."
-              value={desc}
-              onChange={(e) => setDesc(e.target.value)}
-              required
-            />
-
-            <input type="file" multiple onChange={handleFileChange} />
-
-            {selectedFiles.map((f, idx) => (
-              <div key={idx} className="file-preview-item">
-                {f.name} ({formatFileSize(f.size)})
-                <button type="button" onClick={() => removeFile(idx)}>×</button>
-              </div>
-            ))}
-
-            <button type="submit" className="create-btn" disabled={loading}>
-              {loading ? "Saving..." : "Create"}
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
+      {/* Navbar */}
+      <header className="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center sticky top-0 z-30 shadow-sm">
+        <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">G</div>
+            <h1 className="text-xl font-bold text-slate-800">Dashboard</h1>
+        </div>
+        <div className="flex items-center gap-4">
+            <span className="text-sm text-slate-500">Welcome, <b>{user?.name}</b></span>
+            <button onClick={onLogout} className="text-sm text-red-600 font-medium hover:bg-red-50 px-4 py-2 rounded-lg transition-colors border border-transparent hover:border-red-100">
+                Sign Out
             </button>
-          </form>
-        </section>
+        </div>
+      </header>
 
-        {/* TRACKING */}
-        <section className="dashboard-panel tracker-panel">
-          <form onSubmit={handleTrackSubmit}>
-            <input
-              className="tracking-input"
-              placeholder="Enter grievance ID"
-              value={trackingId}
-              onChange={(e) => setTrackingId(e.target.value)}
-            />
-            <button className="tracking-btn" type="submit">Track</button>
-          </form>
-
-          {trackingError && <div className="alert">{trackingError}</div>}
-          {trackingResult && (
-            <div className="tracking-result">
-              <h3>{trackingResult.title}</h3>
-              <p>Status: {trackingResult.status}</p>
+      <div className="flex-1 p-8 max-w-7xl mx-auto w-full grid lg:grid-cols-12 gap-8">
+        
+        {/* LEFT SIDEBAR: Stats & Form (4 Cols) */}
+        <div className="lg:col-span-4 space-y-6">
+            <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-center">
+                    <div className="text-2xl font-bold text-indigo-600">{stats.total}</div>
+                    <div className="text-xs font-bold text-slate-400 uppercase">Total</div>
+                </div>
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-center">
+                    <div className="text-2xl font-bold text-emerald-600">{stats.byStatus?.resolved || 0}</div>
+                    <div className="text-xs font-bold text-slate-400 uppercase">Resolved</div>
+                </div>
             </div>
-          )}
-        </section>
 
-        {/* GRIEVANCES LIST */}
-        <section className="dashboard-panel grievances-panel">
-          <h3>All Grievances</h3>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <h3 className="text-lg font-bold text-slate-800 mb-4">New Grievance</h3>
+                <form onSubmit={submit} className="space-y-4">
+                    <input 
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all"
+                        placeholder="Subject"
+                        value={title} onChange={e => setTitle(e.target.value)} required 
+                    />
+                    <textarea 
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm h-32 resize-none transition-all"
+                        placeholder="Describe the issue..."
+                        value={desc} onChange={e => setDesc(e.target.value)} required 
+                    />
+                    <button 
+                        disabled={loading}
+                        className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg transition-colors shadow-lg shadow-slate-900/20">
+                        {loading ? 'Submitting...' : 'Submit Grievance'}
+                    </button>
+                </form>
+            </div>
+        </div>
 
-          {grievances.length === 0 ? (
-            <p>No grievances yet.</p>
-          ) : (
-            <ul className="grievances-list">
-              {grievances.map((g) => (
-                <li key={g._id} className="grievance-card">
-                  <strong>{g.title}</strong>
-                  <p>{g.description}</p>
-                  <span>Status: {g.status}</span>
-
-                  {user?.role === "admin" && (
-                    <div className="grievance-actions">
-                      <button onClick={() => changeStatus(g._id, "resolved")}>Resolve</button>
-                      <button onClick={() => changeStatus(g._id, "rejected")}>Reject</button>
-                      <button onClick={() => changeStatus(g._id, "open")}>Re-open</button>
+        {/* RIGHT CONTENT: List (8 Cols) */}
+        <div className="lg:col-span-8">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100">
+                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                    <h3 className="font-bold text-slate-700">Recent Activity</h3>
+                </div>
+                
+                {grievances.length === 0 ? (
+                    <div className="p-12 text-center text-slate-400">No records found.</div>
+                ) : (
+                    <div className="divide-y divide-slate-100">
+                        {grievances.map((g) => (
+                            <div key={g._id} className="p-6 hover:bg-slate-50 transition-colors group">
+                                <div className="flex justify-between items-start mb-2">
+                                    <h4 className="font-semibold text-slate-800 text-lg">{g.title}</h4>
+                                    <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize 
+                                        ${g.status === 'resolved' ? 'bg-emerald-100 text-emerald-700' : 
+                                          g.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                                        {g.status}
+                                    </span>
+                                </div>
+                                <p className="text-slate-600 mb-4">{g.description}</p>
+                                
+                                <div className="flex justify-between items-center pt-2">
+                                    <span className="text-xs text-slate-400 font-mono">ID: {g._id.slice(-6)}</span>
+                                    {user?.role === 'admin' && (
+                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={()=>updateStatus(g._id, 'resolved')} className="text-xs px-3 py-1 border border-emerald-200 text-emerald-600 rounded-md hover:bg-emerald-50">Resolve</button>
+                                            <button onClick={()=>updateStatus(g._id, 'rejected')} className="text-xs px-3 py-1 border border-red-200 text-red-600 rounded-md hover:bg-red-50">Reject</button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                  )}
-
-                  <button onClick={() => handleQuickTrack(g._id)}>Track</button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+                )}
+            </div>
+        </div>
       </div>
     </div>
   );
