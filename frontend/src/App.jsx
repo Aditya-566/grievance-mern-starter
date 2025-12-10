@@ -1,9 +1,9 @@
-import React, {useEffect, useState} from 'react'
+import React, { useEffect, useState } from 'react'
 import axios from 'axios'
 import Dashboard from './Dashboard'
 import Login from './Login'
 import About from './About'
-import { Activity, Shield, Zap } from 'lucide-react'
+import { Activity, Shield, Zap, AlertCircle, Clock, CheckCircle, XCircle, Plus, LogOut, User, Filter, Search, Download, ChevronRight, TrendingUp, RefreshCw, Mail, Lock, Eye, EyeOff, BarChart3 } from 'lucide-react'
 
 // 1. SET BASE URL
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -32,26 +32,27 @@ axios.interceptors.response.use(
   }
 );
 
-export default function App(){
+export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '')
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || 'null'))
   const [route, setRoute] = useState(window.location.pathname || '/')
   const [isLoading, setIsLoading] = useState(false)
 
+  // Handle routing history
   useEffect(() => {
     const onPop = () => setRoute(window.location.pathname)
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [])
 
-  function navigate(path){
-    if(window.location.pathname !== path){
+  function navigate(path) {
+    if (window.location.pathname !== path) {
       window.history.pushState({}, '', path)
       setRoute(path)
     }
   }
 
-  function logout(){
+  function logout() {
     setIsLoading(true)
     setTimeout(() => {
       setToken('')
@@ -62,15 +63,67 @@ export default function App(){
     }, 300)
   }
 
+  // Simple About component if not created yet
+  const About = ({ onBack }) => (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-950 text-white font-sans">
+      <div className="relative z-10 px-6 lg:px-8 py-8">
+        <button
+          onClick={onBack}
+          className="mb-8 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors flex items-center gap-2"
+        >
+          <ChevronRight className="w-4 h-4 rotate-180" />
+          Back
+        </button>
+        
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-4xl font-bold mb-8 text-center">About GrievancePortal</h1>
+          
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10">
+            <h2 className="text-2xl font-bold mb-4">Our Mission</h2>
+            <p className="text-slate-300 mb-6">
+              To provide a transparent, efficient, and secure platform for grievance management 
+              that bridges the gap between stakeholders and resolution authorities.
+            </p>
+            
+            <h2 className="text-2xl font-bold mb-4">Key Features</h2>
+            <ul className="space-y-3 mb-6">
+              <li className="flex items-start gap-3">
+                <CheckCircle className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                <span className="text-slate-300">Real-time tracking of grievance status</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <CheckCircle className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                <span className="text-slate-300">Role-based access control</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <CheckCircle className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                <span className="text-slate-300">Secure data encryption</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <CheckCircle className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                <span className="text-slate-300">Automated notifications</span>
+              </li>
+            </ul>
+            
+            <h2 className="text-2xl font-bold mb-4">Contact</h2>
+            <p className="text-slate-300">
+              For support or inquiries, please email: support@grievanceportal.com
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
   // --- UNAUTHENTICATED VIEWS ---
-  if(!token){
-    if(route === '/about') return <About onBack={() => navigate('/')} />
-    
-    if(route === '/login'){
+  if (!token) {
+    if (route === '/about') return <About onBack={() => navigate('/')} />
+
+    if (route === '/login') {
       return (
-        <Login 
-          initialEmail={localStorage.getItem('rememberEmail') || ''} 
-          onLoggedIn={(data)=>{
+        <Login
+          initialEmail={localStorage.getItem('rememberEmail') || ''}
+          onLoggedIn={(data) => {
             setIsLoading(true)
             setToken(data.token)
             setUser(data.user)
@@ -78,7 +131,7 @@ export default function App(){
             localStorage.setItem('user', JSON.stringify(data.user))
             navigate('/dashboard')
             setIsLoading(false)
-          }} 
+          }}
         />
       )
     }
@@ -103,13 +156,13 @@ export default function App(){
               <span className="text-xl font-bold">GrievancePortal</span>
             </div>
             <div className="flex items-center gap-6">
-              <button 
+              <button
                 onClick={() => navigate('/about')}
                 className="text-sm text-slate-300 hover:text-white transition-colors"
               >
                 About
               </button>
-              <button 
+              <button
                 onClick={() => navigate('/login')}
                 className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl"
               >
@@ -126,26 +179,26 @@ export default function App(){
               <Zap className="w-4 h-4 text-yellow-400" />
               <span className="text-sm font-medium">Enterprise-Grade Solution</span>
             </div>
-            
+
             <h1 className="text-5xl lg:text-7xl font-bold mb-6 leading-tight">
               Modern
               <span className="bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent"> Grievance </span>
               Management
             </h1>
-            
+
             <p className="text-xl text-slate-300 max-w-3xl mx-auto mb-12 leading-relaxed">
-              A streamlined platform for efficient issue tracking, transparent resolution, 
+              A streamlined platform for efficient issue tracking, transparent resolution,
               and enhanced stakeholder communication.
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20">
-              <button 
+              <button
                 onClick={() => navigate('/login')}
                 className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-xl font-bold text-lg transition-all shadow-2xl hover:shadow-3xl transform hover:-translate-y-1"
               >
                 Start Free Trial
               </button>
-              <button 
+              <button
                 onClick={() => navigate('/about')}
                 className="px-8 py-4 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl font-bold text-lg transition-all border border-white/20"
               >
@@ -153,30 +206,36 @@ export default function App(){
               </button>
             </div>
 
-            {/* Features Grid */}
+            {/* Features Grid - FIXED SECTION */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-xl flex items-center justify-center mb-6">
+              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all group">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <Activity className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold mb-4">Real-time Tracking</h3>
-                <p className="text-slate-300">Monitor grievance status with live updates and notifications.</p>
+                <h3 className="text-xl font-bold mb-4 text-white">Real-time Tracking</h3>
+                <p className="text-slate-300 leading-relaxed">
+                  Monitor grievance status with live updates and notifications.
+                </p>
               </div>
-              
-              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-400 rounded-xl flex items-center justify-center mb-6">
+
+              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all group">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <Shield className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold mb-4">Secure & Private</h3>
-                <p className="text-slate-300">Enterprise-grade security with role-based access control.</p>
+                <h3 className="text-xl font-bold mb-4 text-white">Secure & Private</h3>
+                <p className="text-slate-300 leading-relaxed">
+                  Enterprise-grade security with role-based access control.
+                </p>
               </div>
-              
-              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all">
-                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-400 rounded-xl flex items-center justify-center mb-6">
+
+              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 hover:border-white/20 transition-all group">
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <Zap className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold mb-4">Fast Resolution</h3>
-                <p className="text-slate-300">Streamlined workflows for quicker grievance resolution.</p>
+                <h3 className="text-xl font-bold mb-4 text-white">Fast Resolution</h3>
+                <p className="text-slate-300 leading-relaxed">
+                  Streamlined workflows for quicker grievance resolution.
+                </p>
               </div>
             </div>
           </div>
@@ -193,8 +252,8 @@ export default function App(){
   }
 
   // --- AUTHENTICATED ---
-  if(route !== '/dashboard') navigate('/dashboard')
-  
+  if (route !== '/dashboard') navigate('/dashboard')
+
   return (
     <>
       <Dashboard user={user} onLogout={logout} />
