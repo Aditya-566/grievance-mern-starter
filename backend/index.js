@@ -18,7 +18,7 @@ app.use(cors({
   origin: [
     "http://localhost:5173",             // Your local development
     "https://grievance-redressal-system-5.onrender.com", // Your Render Backend
-    // ADD YOUR VERCEL URL BELOW (Allow any vercel.app subdomain for safety)
+    // ALLOW VERCEL DOMAINS - This regex allows any sub-domain on vercel.app
     /\.vercel\.app$/ 
   ],
   credentials: true
