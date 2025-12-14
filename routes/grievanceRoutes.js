@@ -203,6 +203,7 @@ router.patch('/:id/status', authenticate, authorize('admin'), async (req,res)=> 
 })
 
 // GET file - serve uploaded files
+// GET file - serve uploaded files
 router.get('/files/:filename', authenticate, async (req, res) => {
   try {
     const { filename } = req.params
@@ -232,6 +233,7 @@ router.get('/files/:filename', authenticate, async (req, res) => {
     res.status(500).json({ error: e.message })
   }
 })
+
 
 // DELETE - Only admins can delete, or users can delete their own
 router.delete('/:id', authenticate, authorizeOwnerOrAdmin, async (req,res)=> {
