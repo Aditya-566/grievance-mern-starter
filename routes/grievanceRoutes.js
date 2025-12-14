@@ -4,6 +4,9 @@ import { authenticate, authorize, authorizeOwnerOrAdmin } from '../middleware/au
 import upload from '../middleware/upload.js'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import fs from 'fs'
+import path from 'path'
+
 const router = express.Router()
 
 const __filename = fileURLToPath(import.meta.url)
@@ -205,6 +208,7 @@ router.patch('/:id/status', authenticate, authorize('admin'), async (req,res)=> 
 // GET file - serve uploaded files
 // GET file - serve uploaded files
 // GET file - PUBLIC access (NO AUTH)
+// GET file - PUBLIC access (NO AUTH)
 router.get('/files/:filename', (req, res) => {
   try {
     const { filename } = req.params
@@ -219,6 +223,7 @@ router.get('/files/:filename', (req, res) => {
     res.status(500).json({ error: e.message })
   }
 })
+
 
 
 // DELETE - Only admins can delete, or users can delete their own
