@@ -209,9 +209,11 @@ router.patch('/:id/status', authenticate, authorize('admin'), async (req,res)=> 
 // GET file - serve uploaded files
 // GET file - PUBLIC access (NO AUTH)
 // GET file - PUBLIC access (NO AUTH)
+// GET file - PUBLIC access
 router.get('/files/:filename', (req, res) => {
   try {
     const { filename } = req.params
+
     const filePath = path.join(__dirname, '../uploads', filename)
 
     if (!fs.existsSync(filePath)) {
@@ -219,8 +221,9 @@ router.get('/files/:filename', (req, res) => {
     }
 
     res.sendFile(filePath)
-  } catch (e) {
-    res.status(500).json({ error: e.message })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: err.message })
   }
 })
 
