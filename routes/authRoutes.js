@@ -4,7 +4,8 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import passport from 'passport'
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20'
-import authenticate from '../middleware/auth.js'
+import { authenticate } from '../middleware/auth.js'
+
 
 
 const router = express.Router()
