@@ -3,9 +3,6 @@ import dotenv from 'dotenv'
 dotenv.config()
 import mongoose from 'mongoose'
 import cors from 'cors'
-import passport from 'passport'
-import session from 'express-session'
-
 
 import grievanceRoutes from './routes/grievanceRoutes.js'
 import authRoutes from './routes/authRoutes.js'
@@ -26,18 +23,6 @@ app.use(
 
 
 app.use(express.json())
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'dev_session_secret',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production', // Use HTTPS in production
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
-}))
-app.use(passport.initialize())
-app.use(passport.session())
 
 
 

@@ -2,97 +2,14 @@ import express from 'express'
 import User from '../models/User.js'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
-import passport from 'passport'
-import { Strategy as GoogleStrategy } from 'passport-google-oauth20'
 import { authenticate } from '../middleware/auth.js'
-
-
 
 const router = express.Router()
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret'
 
 console.log('JWT_SECRET loaded:', JWT_SECRET ? 'YES' : 'NO')
-console.log('GOOGLE_CLIENT_ID loaded:', process.env.GOOGLE_CLIENT_ID ? 'YES' : 'NO')
 
-// Google OAuth Strategy - only if credentials are provided
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  passport.use(new GoogleStrategy({
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/auth/google/callback`
-    },
-    async (accessToken, refreshToken, profile, done) => {
-      try {
-        let user = await User.findOne({ googleId: profile.id })
-        if (!user) {
-          // Check if email already exists
-          const existingUser = await User.findOne({ email: profile.emails[0].value })
-          if (existingUser) {
-            // Link Google account to existing user
-            existingUser.googleId = profile.id
-            existingUser.avatar = profile.photos[0].value
-            existingUser.isVerified = true
-            await existingUser.save()
-            return done(null, existingUser)
-          } else {
-            // Create new user
-            user = new User({
-              googleId: profile.id,
-              email: profile.emails[0].value,
-              name: profile.displayName,
-              avatar: profile.photos[0].value,
-              isVerified: true,
-              role: 'user'
-            })
-            await user.save()
-          }
-        }
-        return done(null, user)
-      } catch (error) {
-        return done(error, null)
-      }
-    }
-  ))
-}
-
-
-
-// Google OAuth routes - only if credentials are provided
-router.get(
-  '/google',
-  passport.authenticate('google', {
-    scope: ['profile', 'email'],
-    session: false
-  })
-)
-
-router.get(
-  '/google/callback',
-  passport.authenticate('google', {
-    failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`,
-    session: false
-  }),
-  (req, res) => {
-    try {
-      if (!req.user) {
-        return res.status(400).json({ error: 'Authentication failed' })
-      }
-
-      const token = jwt.sign(
-        { id: req.user._id, email: req.user.email, role: req.user.role },
-        JWT_SECRET,
-        { expiresIn: '7d' }
-      )
-
-      const redirectUrl = `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/"/g, '').trim()}/login?token=${token}`
-      res.redirect(redirectUrl)
-    } catch (error) {
-      console.error('Google OAuth callback error:', error)
-      res.status(500).json({ error: 'Internal server error during authentication' })
-    }
-  }
-)
 
 // register (optional)
 router.post('/register', async (req,res) => {
@@ -147,17 +64,6 @@ router.post('/login', async (req,res)=>{
 })
 
 // GET current user info
-router.get('/me', authenticate, async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id).select('-passwordHash')
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' })
-    }
-    res.json({ user })
-  } catch (error) {
-    res.status(500).json({ error: error.message })
-  }
-})
 router.get('/me', authenticate, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-passwordHash')
