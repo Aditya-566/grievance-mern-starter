@@ -135,75 +135,18 @@ router.post('/login', async (req,res)=>{
   }
 })
 
-// debug: show whether users exist (emails only)
-router.get('/debug', async (req,res)=>{
-  try{
-    const users = await User.find({}, 'email').limit(20)
-    res.json({ count: users.length, emails: users.map(u=>u.email) })
-  }catch(e){ res.status(500).json({ error: e.message }) }
-})
-
-// Temporary: reset or create a user's password (for local dev)
-// POST { email, password, role? }
-router.post('/reset-password', async (req,res)=>{ 
-  try{
-    const { email, password, role } = req.body
-    if(!email || !password) return res.status(400).json({ error: 'Email and password required' })
-    let user = await User.findOne({ email })
-    const passwordHash = await bcrypt.hash(password, 10)
-    if(user){
-      user.passwordHash = passwordHash
-      if(role && ['user', 'admin'].includes(role)) {
-        user.role = role
-      }
-      await user.save()
-      return res.json({ ok:true, message: 'Password updated', user: { email: user.email, role: user.role } })
-    }
-    user = new User({ 
-      email, 
-      passwordHash, 
-      role: role && ['user', 'admin'].includes(role) ? role : 'user' 
-    })
-    await user.save()
-    return res.status(201).json({ ok:true, message: 'User created', user: { email: user.email, role: user.role } })
-  }catch(e){ res.status(500).json({ error: e.message }) }
-})
-
-// Create or reset admin account
-// POST { type: 'admin' } or empty body
-router.post('/setup-accounts', async (req,res)=>{
-  try{
-    const passwordHash = await bcrypt.hash('password', 10)
-    const { type } = req.body
-    
-    if(type === 'admin' || !type){
-      let admin = await User.findOne({ email: 'admin@example.com' })
-      if(admin){
-        admin.passwordHash = passwordHash
-        admin.role = 'admin'
-        await admin.save()
-      } else {
-        admin = new User({ 
-          email: 'admin@example.com', 
-          passwordHash, 
-          name: 'Admin User',
-          role: 'admin'
-        })
-        await admin.save()
-      }
-    }
-    
-    res.json({ 
-      ok: true, 
-      message: 'Accounts setup complete',
-      accounts: {
-        admin: 'admin@example.com / password'
-      }
-    })
-  }catch(e){ res.status(500).json({ error: e.message }) }
-})
-
 // GET current user info
+router.get('/me', authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('-passwordHash')
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+    res.json({ user })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
 router.get('/me', authenticate, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-passwordHash')

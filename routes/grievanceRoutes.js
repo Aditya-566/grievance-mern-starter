@@ -219,6 +219,11 @@ router.get('/files/:filename', (req, res) => {
       return res.status(404).json({ error: 'File not found' })
     }
 
+    // Set CORS headers for cross-origin image loading
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Allow-Methods', 'GET')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+
     res.sendFile(filePath)
   } catch (err) {
     console.error(err)
