@@ -12,6 +12,9 @@ const router = express.Router()
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret'
 
+console.log('JWT_SECRET loaded:', JWT_SECRET ? 'YES' : 'NO')
+console.log('GOOGLE_CLIENT_ID loaded:', process.env.GOOGLE_CLIENT_ID ? 'YES' : 'NO')
+
 // Google OAuth Strategy - only if credentials are provided
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   passport.use(new GoogleStrategy({
@@ -71,15 +74,23 @@ router.get(
     session: false
   }),
   (req, res) => {
-    const token = jwt.sign(
-      { id: req.user._id, email: req.user.email, role: req.user.role },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    )
+    try {
+      if (!req.user) {
+        return res.status(400).json({ error: 'Authentication failed' })
+      }
 
-    res.redirect(
-      `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?token=${token}`
-    )
+      const token = jwt.sign(
+        { id: req.user._id, email: req.user.email, role: req.user.role },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      )
+
+      const redirectUrl = `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/"/g, '').trim()}/login?token=${token}`
+      res.redirect(redirectUrl)
+    } catch (error) {
+      console.error('Google OAuth callback error:', error)
+      res.status(500).json({ error: 'Internal server error during authentication' })
+    }
   }
 )
 
