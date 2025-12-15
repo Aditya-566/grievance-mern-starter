@@ -53,35 +53,35 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   ))
 }
 
-passport.serializeUser((user, done) => {
-  done(null, user.id)
-})
 
-passport.deserializeUser(async (id, done) => {
-  try {
-    const user = await User.findById(id)
-    done(null, user)
-  } catch (error) {
-    done(error, null)
-  }
-})
 
 // Google OAuth routes - only if credentials are provided
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  router.get('/google',
-    passport.authenticate('google', { scope: ['profile', 'email'] })
-  )
+router.get(
+  '/google',
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    session: false
+  })
+)
 
-  router.get('/google/callback',
-    passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login` }),
-    (req, res) => {
-      // Successful authentication, generate JWT and redirect
-      const token = jwt.sign({ id: req.user._id, email: req.user.email, role: req.user.role }, JWT_SECRET, { expiresIn: '7d' })
-      // Redirect to frontend with token
-      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?token=${token}`)
-    }
-  )
-}
+router.get(
+  '/google/callback',
+  passport.authenticate('google', {
+    failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`,
+    session: false
+  }),
+  (req, res) => {
+    const token = jwt.sign(
+      { id: req.user._id, email: req.user.email, role: req.user.role },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    )
+
+    res.redirect(
+      `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?token=${token}`
+    )
+  }
+)
 
 // register (optional)
 router.post('/register', async (req,res) => {
