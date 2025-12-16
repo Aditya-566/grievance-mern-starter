@@ -12,6 +12,11 @@ import bcrypt from 'bcrypt'
 0
 const app = express()
 const FRONTEND_URL = (process.env.FRONTEND_URL || 'https://grievance-platform.vercel.app').replace(/"/g, '').trim()
+const NODE_ENV = process.env.NODE_ENV || 'development'
+
+console.log('Environment:', NODE_ENV)
+console.log('Frontend URL:', FRONTEND_URL)
+console.log('MongoDB URI configured:', !!process.env.MONGODB_URI)
 
 app.use(
   cors({
@@ -22,7 +27,24 @@ app.use(
       // Allow the configured frontend URL
       if (origin === FRONTEND_URL) return callback(null, true)
 
-      // Allow localhost for development
+      // In development, allow localhost
+      if (NODE_ENV === 'development' && origin && origin.startsWith('http://localhost:')) {
+        return callback(null, true)
+      }
+
+      // Allow Vercel preview deployments
+      if (origin && (origin.includes('vercel-preview') || origin.includes('vercel.app'))) {
+        return callback(null, true)
+      }
+
+      console.log('CORS blocked origin:', origin, 'Allowed:', FRONTEND_URL)
+      return callback(new Error(`CORS policy violation: ${origin} not allowed`))
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
+  })
+)
       if (origin && origin.startsWith('http://localhost:')) return callback(null, true)
 
       // Allow Vercel preview deployments
@@ -73,16 +95,29 @@ app.use('/api/auth', authRoutes)
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({
+  const health = {
     status: 'OK',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    environment: NODE_ENV,
+    mongodb: {
+      connected: mongoose.connection.readyState === 1,
+      state: mongoose.connection.readyState,
+      name: mongoose.connection.name
+    },
     cors: {
       frontend_url: FRONTEND_URL,
-      origin: req.headers.origin
+      request_origin: req.headers.origin,
+      allowed: req.headers.origin === FRONTEND_URL || !req.headers.origin
+    },
+    server: {
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      version: process.version
     }
-  })
+  }
+
+  const statusCode = health.mongodb.connected ? 200 : 503
+  res.status(statusCode).json(health)
 })
 
 // Error handling middleware
