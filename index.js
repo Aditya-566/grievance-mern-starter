@@ -44,21 +44,6 @@ app.use(
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
   })
-)
-      if (origin && origin.startsWith('http://localhost:')) return callback(null, true)
-
-      // Allow Vercel preview deployments
-      if (origin && origin.includes('vercel-preview')) return callback(null, true)
-
-      console.log('CORS check - Origin:', origin, 'Allowed:', FRONTEND_URL)
-      // Reject other origins
-      return callback(new Error('Not allowed by CORS'))
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
-  })
-)
 
 
 
