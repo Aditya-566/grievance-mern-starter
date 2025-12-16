@@ -139,6 +139,11 @@ if (!MONGODB_URI) {
   process.exit(1)
 }
 
+if (!process.env.JWT_SECRET) {
+  console.error("❌ JWT_SECRET is missing")
+  process.exit(1)
+}
+
 
 ;(async function start(){
   try{

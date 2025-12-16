@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
 import Grievance from '../models/Grievance.js'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret'
+const JWT_SECRET = process.env.JWT_SECRET
 
 // Authentication middleware - verifies JWT token
 export const authenticate = async (req, res, next) => {
