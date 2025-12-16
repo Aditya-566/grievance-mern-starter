@@ -11,12 +11,30 @@ import bcrypt from 'bcrypt'
 
 0
 const app = express()
-const FRONTEND_URL = (process.env.FRONTEND_URL) || 'http://localhost:5173'
+const FRONTEND_URL = (process.env.FRONTEND_URL || 'https://grievance-platform.vercel.app').replace(/"/g, '').trim()
 
 app.use(
   cors({
-    origin: FRONTEND_URL,
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true)
+
+      // Allow the configured frontend URL
+      if (origin === FRONTEND_URL) return callback(null, true)
+
+      // Allow localhost for development
+      if (origin && origin.startsWith('http://localhost:')) return callback(null, true)
+
+      // Allow Vercel preview deployments
+      if (origin && origin.includes('vercel-preview')) return callback(null, true)
+
+      console.log('CORS check - Origin:', origin, 'Allowed:', FRONTEND_URL)
+      // Reject other origins
+      return callback(new Error('Not allowed by CORS'))
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
   })
 )
 
@@ -52,6 +70,47 @@ process.on('unhandledRejection', (reason)=> {
 // routes
 app.use('/api/grievances', grievanceRoutes)
 app.use('/api/auth', authRoutes)
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    cors: {
+      frontend_url: FRONTEND_URL,
+      origin: req.headers.origin
+    }
+  })
+})
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err.message)
+  console.error('Stack:', err.stack)
+  console.error('Origin:', req.headers.origin)
+  console.error('Method:', req.method)
+  console.error('URL:', req.url)
+
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({
+      error: 'CORS policy violation',
+      message: 'Origin not allowed',
+      origin: req.headers.origin
+    })
+  }
+
+  res.status(500).json({
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+  })
+})
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Route not found', path: req.originalUrl })
+})
 
 const PORT = process.env.PORT || 5000
 const MONGODB_URI = process.env.MONGODB_URI
